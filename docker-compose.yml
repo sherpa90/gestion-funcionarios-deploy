@@ -1,9 +1,13 @@
 services:
   web:
     build: .
+    # 1. Forzamos ROOT para que Django tenga permiso de crear la carpeta /app/logs
+    user: root
     volumes:
       - .:/app
       - media_data:/app/media
+      # 2. Creamos un volumen específico para logs, así no choca con tu código
+      - logs_data:/app/logs
     ports:
       - "8000:8000"
     depends_on:
@@ -17,6 +21,13 @@ services:
       - SQL_USER=sgpal_user
       - SQL_PASSWORD=Sgpal2025Secure*
       - DEBUG=True
+    # 3. Comando para asegurar que todo esté listo antes de arrancar
+    command: >
+      sh -c "mkdir -p /app/logs && 
+             chmod 777 /app/logs && 
+             python manage.py migrate && 
+             python manage.py collectstatic --noinput && 
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000"
 
   db:
     image: postgres:15
@@ -28,5 +39,7 @@ services:
       - POSTGRES_DB=sgpal_db
 
 volumes:
+  # Al ser un repo nuevo, estos volúmenes nacerán limpios
   postgres_data:
   media_data:
+  logs_data:
